@@ -19,6 +19,10 @@ const tabMode = ref<"all" | "my">("all");
 
 const sportsFilters = ["전체", "러닝", "농구", "축구", "배드민턴", "기타"];
 
+const myJoinedPostCount = computed(() => {
+  return props.posts.filter((post) => props.joinedPostIds.includes(post.id)).length;
+});
+
 // Filter posts based on tabMode, search, and sport filter
 const filteredPosts = computed(() => {
   return props.posts.filter((post) => {
@@ -86,7 +90,7 @@ const filteredPosts = computed(() => {
             tabMode === 'my' ? 'bg-white text-gray-900 shadow-xs' : 'text-gray-500 hover:text-gray-900'
           }`"
         >
-          내가 가입한 모임 ({{ joinedPostIds.length }})
+          내가 가입한 모임 ({{ myJoinedPostCount }})
         </button>
       </div>
 

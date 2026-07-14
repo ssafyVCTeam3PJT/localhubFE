@@ -37,6 +37,16 @@ export interface ApiEnvelope<T> {
   error?: string;
 }
 
+export interface BackendPlaceResponse {
+  id: string;
+  name: string;
+  address: string;
+  lat: number;
+  lng: number;
+  postCount: number;
+  category?: string | null;
+}
+
 export const normalizeComment = (raw: BackendCommentResponse): Comment => ({
   id: raw.id,
   author: raw.authorName,
@@ -88,8 +98,8 @@ export const fetchPostById = async (postId: string): Promise<Post> => {
   return normalizePost(payload.data);
 };
 
-export const fetchPlaces = async () => {
-  const payload = await requestJson<ApiEnvelope<{ places: Array<{ id: string; name: string; address: string; lat: number; lng: number; postCount: number }> }>>('/places');
+export const fetchPlaces = async (): Promise<BackendPlaceResponse[]> => {
+  const payload = await requestJson<ApiEnvelope<{ places: BackendPlaceResponse[] }>>('/places');
   return payload.data?.places ?? [];
 };
 

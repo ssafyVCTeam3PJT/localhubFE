@@ -1,7 +1,11 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { ref, watch } from "vue";
 import { X, Check, Sparkles } from "lucide-vue-next";
 import type { Post } from "../types";
+
+const props = defineProps<{
+  initialLocationName?: string | null;
+}>();
 
 const emit = defineEmits<{
   (e: "close"): void;
@@ -29,6 +33,15 @@ const presetImages = [
   { label: "🏸 배드민턴/실내", url: "https://images.unsplash.com/photo-1626224583764-f87db24ac4ea?q=80&w=600" },
   { label: "🧗 등산/액티비티", url: "https://images.unsplash.com/photo-1551632811-561730d1e4a6?q=80&w=600" }
 ];
+
+const applyInitialLocation = (value?: string | null) => {
+  const matchedPreset = locationPresets.find((loc) => loc.name === value);
+  locationName.value = matchedPreset?.name ?? locationPresets[0].name;
+};
+
+watch(() => props.initialLocationName, (value) => {
+  applyInitialLocation(value);
+}, { immediate: true });
 
 const handleSubmit = (e: Event) => {
   e.preventDefault();
@@ -105,19 +118,17 @@ const handleSubmit = (e: Event) => {
           />
         </div>
 
-        <!-- Preset Location Selection -->
+        <!-- Fixed location from the selected region -->
         <div className="flex flex-col gap-1">
           <label className="text-xs font-bold text-gray-600 uppercase tracking-wider">
-            장소 선택 <span className="text-[#ba1a1a]">*</span>
+            모임 장소
           </label>
-          <select
-            className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-[#006c49] text-gray-800"
-            v-model="locationName"
-          >
-            <option v-for="loc in locationPresets" :key="loc.name" :value="loc.name">
-              {{ loc.name }} ({{ loc.address }})
-            </option>
-          </select>
+          <div className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-700">
+            {{ locationName }}
+          </div>
+          <p className="text-[11px] text-gray-400">
+            지역 상세 페이지에서 선택한 장소로 자동 등록됩니다.
+          </p>
         </div>
 
         <!-- Grid for Sport Type and Capacity -->

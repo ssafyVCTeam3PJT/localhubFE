@@ -2,7 +2,8 @@
 import { ref, computed, watch, onMounted, onBeforeUnmount } from "vue";
 import { MapPin, Plus, Minus, Bot, Star, ChevronLeft, ChevronRight, Search, CloudSun } from "lucide-vue-next";
 import type { Post } from "../types";
-import { fetchPlaces } from "../api";
+import { fetchPlaces, type BackendPlaceResponse } from "../api";
+import { getCategoryEmoji } from "../mapCategory";
 
 declare global {
   interface Window {
@@ -18,6 +19,7 @@ interface LocationMeta {
   lat: number;
   lng: number;
   weatherCity: string;
+  category?: string;
 }
 
 interface WeatherData {
@@ -35,7 +37,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: "selectPost", post: Post): void;
-  (e: "openCreateModal"): void;
+  (e: "openCreateModal", locationName?: string): void;
   (e: "openAIDrawer"): void;
 }>();
 
@@ -53,7 +55,7 @@ const weather = ref<WeatherData | null>(null);
 const weatherLoading = ref(false);
 const weatherError = ref<string | null>(null);
 
-const backendPlaces = ref<Array<{ id: string; name: string; address: string; lat: number; lng: number; postCount: number }>>([]);
+const backendPlaces = ref<BackendPlaceResponse[]>([]);
 
 const locationMeta: Record<string, LocationMeta> = {
   "보라매공원": {
@@ -62,7 +64,8 @@ const locationMeta: Record<string, LocationMeta> = {
     totalCount: 12,
     lat: 37.4928,
     lng: 126.9243,
-    weatherCity: "Seoul"
+    weatherCity: "Seoul",
+    category: "러닝"
   },
   "반포한강공원 농구장": {
     address: "서울특별시 서초구 신반포로11길 144-1",
@@ -70,7 +73,8 @@ const locationMeta: Record<string, LocationMeta> = {
     totalCount: 5,
     lat: 37.5092,
     lng: 126.9958,
-    weatherCity: "Seoul"
+    weatherCity: "Seoul",
+    category: "농구"
   },
   "관악산 서울대입구 입구": {
     address: "서울특별시 관악구 관악로 1",
@@ -78,7 +82,8 @@ const locationMeta: Record<string, LocationMeta> = {
     totalCount: 3,
     lat: 37.4772,
     lng: 126.9514,
-    weatherCity: "Seoul"
+    weatherCity: "Seoul",
+    category: "등산"
   },
   "동작구민체육센터": {
     address: "서울특별시 동작구 여의대방로16길 53",
@@ -86,26 +91,44 @@ const locationMeta: Record<string, LocationMeta> = {
     totalCount: 2,
     lat: 37.5038,
     lng: 126.9536,
-    weatherCity: "Seoul"
+    weatherCity: "Seoul",
+    category: "배드민턴"
   }
 };
 
+const getLocationCategory = (locationName: string) => {
+  const backendPlace = backendPlaces.value.find((place) => place.name === locationName);
+  if (backendPlace?.category) return backendPlace.category;
+
+  const matchedPost = props.posts.find((post) => {
+    const haystack = `${post.location} ${post.title}`.toLowerCase();
+    return haystack.includes(locationName.toLowerCase()) || (haystack.includes("보라매") && locationName === "보라매공원");
+  });
+
+  return matchedPost?.sport ?? "기타";
+};
+
+const getLocationMeta = (locationName: string): LocationMeta | null => {
+  return locationGroups.value[locationName] ?? locationMeta[locationName] ?? null;
+};
+
 const locationGroups = computed(() => {
-  const entries = Object.entries(locationMeta);
+  const entries = Object.entries(locationMeta).map(([locationName, meta]) => [locationName, { ...meta, category: meta.category ?? "기타" }] as const);
   const backendEntries = backendPlaces.value.map((place) => [place.name, {
     address: place.address,
     rating: 4.5,
     totalCount: place.postCount,
     lat: place.lat,
     lng: place.lng,
-    weatherCity: "Seoul"
+    weatherCity: "Seoul",
+    category: place.category ?? "기타"
   }] as const);
 
   const merged = [...entries, ...backendEntries];
-
-  return merged.reduce<Record<string, LocationMeta & { posts: Post[] }>>((acc, [locationName, meta]) => {
+  const groups = merged.reduce<Record<string, LocationMeta & { posts: Post[] }>>((acc, [locationName, meta]) => {
     acc[locationName] = {
       ...meta,
+      category: meta.category ?? getLocationCategory(locationName),
       posts: props.posts.filter((post) => {
         const haystack = `${post.location} ${post.title}`.toLowerCase();
         return haystack.includes(locationName.toLowerCase()) || (haystack.includes("보라매") && locationName === "보라매공원");
@@ -113,11 +136,29 @@ const locationGroups = computed(() => {
     };
     return acc;
   }, {});
+
+  const query = searchQuery.value.trim().toLowerCase();
+  if (!query) return groups;
+
+  return Object.entries(groups).reduce<Record<string, LocationMeta & { posts: Post[] }>>((acc, [locationName, meta]) => {
+    const haystack = [
+      locationName,
+      meta.address,
+      meta.category ?? "",
+      ...meta.posts.map((post) => `${post.title} ${post.description} ${post.location} ${post.tags.join(" ")}`)
+    ].join(" ").toLowerCase();
+
+    if (haystack.includes(query)) {
+      acc[locationName] = meta;
+    }
+
+    return acc;
+  }, {});
 });
 
 const staticMapUrl = computed(() => {
   const clientId = import.meta.env.VITE_NAVER_STATIC_MAP_CLIENT_ID;
-  const selectedMeta = locationMeta[selectedLocation.value || "보라매공원"];
+  const selectedMeta = getLocationMeta(selectedLocation.value || "보라매공원");
 
   if (!clientId || !selectedMeta) return null;
 
@@ -169,13 +210,14 @@ const renderMap = () => {
 
   const markerPlaces = Object.entries(locationGroups.value);
   markerPlaces.forEach(([locationName, meta]) => {
+    const markerIcon = getCategoryEmoji(meta.category);
     const marker = new window.naver.maps.Marker({
       map: mapInstance.value,
       position: new window.naver.maps.LatLng(meta.lat, meta.lng),
       title: locationName,
       icon: {
-        content: `<div style="background:#006c49;color:#fff;padding:6px 10px;border-radius:999px;font-size:12px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,0.2);">${locationName}</div>`,
-        anchor: new window.naver.maps.Point(10, 10)
+        content: `<div style="display:flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:999px;background:#fff;border:2px solid #10b981;box-shadow:0 6px 18px rgba(0,0,0,0.18);font-size:20px;line-height:1;">${markerIcon}</div>`,
+        anchor: new window.naver.maps.Point(20, 20)
       }
     });
 
@@ -261,7 +303,7 @@ const fetchWeather = async (locationName: string) => {
     return;
   }
 
-  const meta = locationMeta[locationName];
+  const meta = getLocationMeta(locationName);
   if (!meta) {
     weatherLoading.value = false;
     return;
@@ -296,7 +338,7 @@ const fetchWeather = async (locationName: string) => {
 watch(selectedLocation, (locationName) => {
   if (!locationName) return;
   if (mapInstance.value && window.naver?.maps) {
-    const meta = locationMeta[locationName];
+    const meta = getLocationMeta(locationName);
     if (meta) {
       mapInstance.value.setCenter(new window.naver.maps.LatLng(meta.lat, meta.lng));
       mapInstance.value.setZoom(14);
@@ -304,6 +346,12 @@ watch(selectedLocation, (locationName) => {
   }
   void fetchWeather(locationName);
 }, { immediate: true });
+
+watch(() => searchQuery.value, () => {
+  if (selectedLocation.value && !locationGroups.value[selectedLocation.value]) {
+    selectedLocation.value = null;
+  }
+});
 
 watch(zoom, (newZoom) => {
   if (mapInstance.value && window.naver?.maps) {
@@ -418,13 +466,6 @@ onBeforeUnmount(() => {
         <span class="absolute -top-1 -left-1 bg-[#10b981] text-white text-[8px] font-bold px-1.5 py-0.5 rounded-full border border-white uppercase tracking-wider">AI</span>
       </button>
 
-      <button
-        @click="emit('openCreateModal')"
-        class="w-14 h-14 bg-[#10b981] hover:bg-[#006c49] text-white rounded-full shadow-[0_8px_24px_rgba(16,185,129,0.35)] flex items-center justify-center hover:scale-105 active:scale-95 transition-all duration-300 group cursor-pointer"
-        aria-label="Create session"
-      >
-        <Plus :size="28" class="group-hover:rotate-90 transition-transform duration-300" />
-      </button>
     </div>
 
     <Transition name="fade">
@@ -439,7 +480,7 @@ onBeforeUnmount(() => {
 
           <div class="p-6 pb-4">
             <div class="flex items-start justify-between gap-3">
-              <div>
+              <div class="flex-1 min-w-0">
                 <h3 class="font-headline-lg text-[#191c1e] text-xl font-bold tracking-tight">
                   {{ selectedLocation }}
                 </h3>
@@ -448,12 +489,12 @@ onBeforeUnmount(() => {
                   {{ locationGroups[selectedLocation].address }}
                 </p>
               </div>
-              <div class="rounded-full bg-[#006c49]/10 px-2.5 py-1 text-[11px] font-semibold text-[#006c49]">
-                {{ locationGroups[selectedLocation].posts.length }}개 모임
-              </div>
             </div>
 
             <div class="flex flex-wrap gap-2 mt-3">
+              <span class="rounded-full bg-[#006c49]/10 px-2.5 py-1 text-[11px] font-semibold text-[#006c49]">
+                {{ locationGroups[selectedLocation].posts.length }}개 모임
+              </span>
               <span class="bg-[#006c49]/10 text-[#006c49] text-xs font-semibold px-3 py-1 rounded-full">
                 {{ locationGroups[selectedLocation].posts.length }} Posts
               </span>
@@ -465,6 +506,13 @@ onBeforeUnmount(() => {
                 <CloudSun :size="12" />
                 {{ weather.cityName }} · {{ weather.locationLabel }} · {{ weather.description }} · {{ Math.round(weather.temp) }}°C
               </span>
+              <button
+                @click="emit('openCreateModal', selectedLocation || undefined)"
+                class="ml-auto inline-flex items-center gap-1.5 rounded-full bg-[#006c49] px-3 py-1.5 text-[11px] font-bold text-white shadow-sm transition-all hover:bg-[#005236] active:scale-95"
+              >
+                <Plus :size="14" />
+                이 지역에 글쓰기
+              </button>
             </div>
           </div>
 

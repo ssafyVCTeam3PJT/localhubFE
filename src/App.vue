@@ -25,7 +25,7 @@ const isDetailLoading = ref(false);
 const detailError = ref<string | null>(null);
 
 // User Profile Join status
-const joinedPostIds = ref<string[]>(["boramae-running"]); // start joined to Boramae running
+const joinedPostIds = ref<string[]>([]);
 
 // Selection states
 const selectedPost = ref<Post | null>(null);
@@ -34,6 +34,7 @@ const activeChatId = ref<string | null>(null);
 // Open states
 const isCreateModalOpen = ref(false);
 const isAIDrawerOpen = ref(false);
+const createModalInitialLocation = ref<string | null>(null);
 
 // Notification States
 const toastMessage = ref<string | null>(null);
@@ -210,6 +211,16 @@ const handleSendMessage = (chatId: string, text: string) => {
 };
 
 // Create New Post
+const handleOpenCreateModal = (locationName?: string | null) => {
+  createModalInitialLocation.value = locationName ?? null;
+  isCreateModalOpen.value = true;
+};
+
+const closeCreateModal = () => {
+  isCreateModalOpen.value = false;
+  createModalInitialLocation.value = null;
+};
+
 const handleCreatePost = async (newPostData: Partial<Post>) => {
   try {
     const createdPost = await createBackendPost(newPostData);
@@ -293,7 +304,7 @@ const handleTabChange = (tab: "explore" | "matches" | "chat") => {
           <InteractiveMap
             :posts="posts"
             @selectPost="(post) => openPostDetail(post)"
-            @openCreateModal="isCreateModalOpen = true"
+            @openCreateModal="(locationName) => handleOpenCreateModal(locationName)"
             @openAIDrawer="isAIDrawerOpen = true"
           />
         </div>
@@ -507,7 +518,8 @@ const handleTabChange = (tab: "explore" | "matches" | "chat") => {
     <!-- Create Match Modal Popup -->
     <CreateMatchModal
       v-if="isCreateModalOpen"
-      @close="isCreateModalOpen = false"
+      :initialLocationName="createModalInitialLocation"
+      @close="closeCreateModal"
       @createPost="handleCreatePost"
     />
 
