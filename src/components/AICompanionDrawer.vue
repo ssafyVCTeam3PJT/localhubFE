@@ -58,26 +58,25 @@ const handleSend = async (textToSend: string) => {
   error.value = null;
 
   try {
-    const response = await fetch("/api/ai/companion", {
+    const response = await fetch("/api/chat", {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        message: textToSend,
-        context: props.postsContext
+        message: textToSend
       })
     });
 
     const data = await response.json();
-    if (!response.ok) {
+    if (!response.ok || !data.success) {
       throw new Error(data.error || "Failed to communicate with AI");
     }
 
     messages.value.push({
       id: (Date.now() + 1).toString(),
       sender: "ai",
-      text: data.text
+      text: data.data.reply
     });
   } catch (err: any) {
     console.error(err);
