@@ -13,6 +13,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: "back"): void;
   (e: "join"): void;
+  (e: "leave"): void;
   (e: "goToChat"): void;
   (e: "addComment", postId: string, content: string): void;
   (e: "requestEdit", post: Post): void;
@@ -266,10 +267,17 @@ const handleDelete = () => {
         <button
           v-if="isJoined"
           @click="emit('goToChat')"
-          className="flex-1 bg-[#006c49] hover:bg-[#005236] text-white font-bold py-3.5 px-4 rounded-xl shadow-md flex items-center justify-center gap-2 transition-all active:scale-98 cursor-pointer text-sm"
+          className="flex-[2] bg-[#006c49] hover:bg-[#005236] text-white font-bold py-3.5 px-4 rounded-xl shadow-md flex items-center justify-center gap-2 transition-all active:scale-98 cursor-pointer text-sm"
         >
           <MessageSquare :size="18" />
-          채팅방 바로가기
+          채팅방 가기
+        </button>
+        <button
+          v-if="isJoined"
+          @click="emit('leave')"
+          className="flex-[1] bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold py-3.5 px-4 rounded-xl shadow-sm flex items-center justify-center gap-2 transition-all active:scale-98 cursor-pointer text-sm"
+        >
+          참가 취소
         </button>
         <button
           v-else

@@ -10,7 +10,7 @@ import CreateMatchModal from "./components/CreateMatchModal.vue";
 import AICompanionDrawer from "./components/AICompanionDrawer.vue";
 import type { Post, ChatConversation, Comment } from "./types";
 import { INITIAL_POSTS, INITIAL_CHATS } from "./initialData";
-import { fetchPosts, fetchPostById, addComment, joinPost, viewPost, createPost as createBackendPost, updatePost, deletePost, mergePostWithLocalState } from "./api";
+import { fetchPosts, fetchPostById, addComment, joinPost, leavePost, viewPost, createPost as createBackendPost, updatePost, deletePost, mergePostWithLocalState } from "./api";
 import { Compass, Users, MessageSquare, Bell, Check, X } from "lucide-vue-next";
 
 // Navigation State
@@ -24,8 +24,29 @@ const postsError = ref<string | null>(null);
 const isDetailLoading = ref(false);
 const detailError = ref<string | null>(null);
 
-// User Profile Join status
-const joinedPostIds = ref<string[]>([]);
+// User Profile Join status (Local Storage Cache)
+const getJoinedPosts = (): string[] => {
+  try {
+    const saved = localStorage.getItem('joined_posts');
+    return saved ? JSON.parse(saved) : [];
+  } catch {
+    return [];
+  }
+};
+const saveJoinedPost = (postId: string) => {
+  const joined = getJoinedPosts();
+  if (!joined.includes(postId)) {
+    joined.push(postId);
+    localStorage.setItem('joined_posts', JSON.stringify(joined));
+  }
+};
+const removeJoinedPost = (postId: string) => {
+  let joined = getJoinedPosts();
+  joined = joined.filter(id => id !== postId);
+  localStorage.setItem('joined_posts', JSON.stringify(joined));
+};
+
+const joinedPostIds = ref<string[]>(getJoinedPosts());
 
 // Selection states
 const selectedPost = ref<Post | null>(null);
@@ -106,6 +127,7 @@ const handleJoinPost = async (post: Post) => {
     const nextJoinedCount = Number.isFinite(result.joinedCount) ? result.joinedCount : post.joinedCount + 1;
 
     joinedPostIds.value.push(post.id);
+    saveJoinedPost(post.id);
 
     const chatExists = chats.value.some((c) => c.id === post.id);
     if (!chatExists) {
@@ -160,6 +182,40 @@ const handleJoinPost = async (post: Post) => {
     triggerToast(`"${post.title}" 모임 가입 완료!`);
   } catch (error) {
     triggerToast(error instanceof Error ? error.message : "참여 처리에 실패했습니다.");
+  }
+};
+
+// Leave Match
+const handleLeavePost = async (post: Post) => {
+  if (!joinedPostIds.value.includes(post.id)) return;
+
+  try {
+    const result = await leavePost(post.id);
+    const nextJoinedCount = Number.isFinite(result.joinedCount) ? result.joinedCount : Math.max(0, post.joinedCount - 1);
+
+    joinedPostIds.value = joinedPostIds.value.filter(id => id !== post.id);
+    removeJoinedPost(post.id);
+
+    chats.value = chats.value.map((c) => {
+      if (c.id === post.id) return { ...c, joinedCount: nextJoinedCount };
+      return c;
+    });
+
+    posts.value = posts.value.map((p) => {
+      if (p.id === post.id) return { ...p, joinedCount: nextJoinedCount };
+      return p;
+    });
+
+    if (selectedPost.value?.id === post.id) {
+      selectedPost.value = {
+        ...selectedPost.value,
+        joinedCount: nextJoinedCount
+      };
+    }
+
+    triggerToast(`"${post.title}" 참가 취소 완료`);
+  } catch (error) {
+    triggerToast(error instanceof Error ? error.message : "취소 처리에 실패했습니다.");
   }
 };
 
@@ -398,6 +454,7 @@ const handleTabChange = (tab: "explore" | "matches" | "chat") => {
             :error="detailError"
             @back="selectedPost = null"
             @join="handleJoinPost(selectedPost)"
+            @leave="handleLeavePost(selectedPost)"
             @goToChat="handleGoToChat(selectedPost.id)"
             @addComment="handleAddComment"
             @requestEdit="handleRequestEdit"
@@ -426,6 +483,7 @@ const handleTabChange = (tab: "explore" | "matches" | "chat") => {
             :error="detailError"
             @back="selectedPost = null"
             @join="handleJoinPost(selectedPost)"
+            @leave="handleLeavePost(selectedPost)"
             @goToChat="handleGoToChat(selectedPost.id)"
             @addComment="handleAddComment"
             @requestEdit="handleRequestEdit"

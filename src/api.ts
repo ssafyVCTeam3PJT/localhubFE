@@ -226,6 +226,21 @@ export const joinPost = async (postId: string) => {
   };
 };
 
+export const leavePost = async (postId: string) => {
+  const payload = await requestJson<ApiEnvelope<any>>(`/posts/${postId}/join`, {
+    method: 'DELETE'
+  });
+
+  const data = payload.data ?? payload;
+  const joinedCount = Number(
+    data?.joinedCount ?? data?.participants ?? data?.memberCount ?? data?.count ?? 0
+  );
+
+  return {
+    joinedCount
+  };
+};
+
 export const viewPost = async (postId: string) => {
   const payload = await requestJson<ApiEnvelope<{ views: number }>>(`/posts/${postId}/view`, {
     method: 'POST'
