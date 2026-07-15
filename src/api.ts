@@ -54,25 +54,83 @@ export const normalizeComment = (raw: BackendCommentResponse): Comment => ({
   createdAt: raw.createdAt
 });
 
-export const normalizePost = (raw: BackendPostResponse): Post => ({
-  id: raw.id,
-  title: raw.title,
-  location: raw.location,
-  address: raw.address,
-  sport: (raw.sport as Post['sport']) ?? '기타',
-  status: (raw.status as Post['status']) ?? '모집중',
-  createdAt: raw.createdAt,
-  author: raw.authorName ?? '익명',
-  views: raw.views ?? 0,
-  description: raw.description,
-  tags: raw.tags ?? [],
-  joinedCount: raw.joinedCount ?? 0,
-  maxCount: raw.maxCount ?? 0,
-  lat: raw.lat ?? 0,
-  lng: raw.lng ?? 0,
-  comments: (raw.comments ?? []).map(normalizeComment),
-  image: undefined
-});
+const unwrapPostPayload = (raw: any): BackendPostResponse => {
+  if (!raw || typeof raw !== 'object') {
+    return raw as BackendPostResponse;
+  }
+
+  if ('id' in raw && 'title' in raw) {
+    return raw as BackendPostResponse;
+  }
+
+  if ('post' in raw && raw.post && typeof raw.post === 'object') {
+    return raw.post as BackendPostResponse;
+  }
+
+  if ('data' in raw && raw.data && typeof raw.data === 'object') {
+    if ('post' in raw.data && raw.data.post && typeof raw.data.post === 'object') {
+      return raw.data.post as BackendPostResponse;
+    }
+    if ('id' in raw.data && 'title' in raw.data) {
+      return raw.data as BackendPostResponse;
+    }
+  }
+
+  return raw as BackendPostResponse;
+};
+
+export const normalizePost = (raw: any): Post => {
+  const post = unwrapPostPayload(raw);
+
+  return {
+    id: post.id,
+    title: post.title,
+    location: post.location,
+    address: post.address,
+    sport: (post.sport as Post['sport']) ?? '기타',
+    status: (post.status as Post['status']) ?? '모집중',
+    createdAt: post.createdAt,
+    author: post.authorName ?? '익명',
+    views: post.views ?? 0,
+    description: post.description,
+    tags: post.tags ?? [],
+    joinedCount: post.joinedCount ?? 0,
+    maxCount: post.maxCount ?? 0,
+    lat: post.lat ?? 0,
+    lng: post.lng ?? 0,
+    comments: (post.comments ?? []).map(normalizeComment),
+    image: undefined
+  };
+};
+
+export const mergePostWithLocalState = (freshPost: Partial<Post> | null | undefined, fallbackPost?: Partial<Post> | null): Post => {
+  const base = freshPost ?? {};
+  const fallback = fallbackPost ?? {};
+
+  const mergedJoinedCount = (base.joinedCount ?? 0) > 0
+    ? (base.joinedCount as number)
+    : (fallback.joinedCount ?? 0);
+
+  return {
+    id: base.id ?? fallback.id ?? '',
+    title: base.title ?? fallback.title ?? '',
+    location: base.location ?? fallback.location ?? '',
+    address: base.address ?? fallback.address ?? '',
+    sport: (base.sport as Post['sport']) ?? (fallback.sport as Post['sport']) ?? '기타',
+    status: (base.status as Post['status']) ?? (fallback.status as Post['status']) ?? '모집중',
+    createdAt: base.createdAt ?? fallback.createdAt ?? '',
+    author: base.author ?? fallback.author ?? '익명',
+    views: base.views ?? fallback.views ?? 0,
+    description: base.description ?? fallback.description ?? '',
+    tags: base.tags ?? fallback.tags ?? [],
+    joinedCount: mergedJoinedCount,
+    maxCount: base.maxCount ?? fallback.maxCount ?? 0,
+    lat: base.lat ?? fallback.lat ?? 0,
+    lng: base.lng ?? fallback.lng ?? 0,
+    comments: base.comments ?? fallback.comments ?? [],
+    image: base.image ?? fallback.image
+  } as Post;
+};
 
 const requestJson = async <T>(path: string, options?: RequestInit): Promise<T> => {
   const response = await fetch(`${API_BASE_URL}${path}`, {
@@ -103,22 +161,44 @@ export const fetchPlaces = async (): Promise<BackendPlaceResponse[]> => {
   return payload.data?.places ?? [];
 };
 
-export const createPost = async (input: Partial<Post>) => {
-  const payload = await requestJson<ApiEnvelope<BackendPostResponse>>('/posts', {
+export interface PostCreateInput extends Partial<Post> {
+  editPassword?: string;
+}
+
+export const buildPostRequestPayload = (input: PostCreateInput) => ({
+  title: input.title,
+  description: input.description,
+  location: input.location,
+  address: input.address,
+  sport: input.sport,
+  maxCount: input.maxCount,
+  lat: input.lat,
+  lng: input.lng,
+  tags: input.tags,
+  editPassword: input.editPassword
+});
+
+export const createPost = async (input: PostCreateInput) => {
+  const payload = await requestJson<ApiEnvelope<any>>('/posts', {
     method: 'POST',
-    body: JSON.stringify({
-      title: input.title,
-      description: input.description,
-      location: input.location,
-      address: input.address,
-      sport: input.sport,
-      maxCount: input.maxCount,
-      lat: input.lat,
-      lng: input.lng,
-      tags: input.tags
-    })
+    body: JSON.stringify(buildPostRequestPayload(input))
+  });
+  return normalizePost(payload.data ?? payload);
+};
+
+export const updatePost = async (postId: string, input: Partial<Post> & { password?: string }) => {
+  const payload = await requestJson<ApiEnvelope<BackendPostResponse>>(`/posts/${postId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(input)
   });
   return normalizePost(payload.data);
+};
+
+export const deletePost = async (postId: string, password: string) => {
+  await requestJson<ApiEnvelope<null>>(`/posts/${postId}`, {
+    method: 'DELETE',
+    body: JSON.stringify({ password })
+  });
 };
 
 export const addComment = async (postId: string, content: string) => {
@@ -130,10 +210,20 @@ export const addComment = async (postId: string, content: string) => {
 };
 
 export const joinPost = async (postId: string) => {
-  const payload = await requestJson<ApiEnvelope<{ joinedCount: number; isJoined: boolean }>>(`/posts/${postId}/join`, {
+  const payload = await requestJson<ApiEnvelope<any>>(`/posts/${postId}/join`, {
     method: 'POST'
   });
-  return payload.data;
+
+  const data = payload.data ?? payload;
+  const joinedCount = Number(
+    data?.joinedCount ?? data?.participants ?? data?.memberCount ?? data?.count ?? 0
+  );
+  const isJoined = data?.isJoined ?? data?.joined ?? false;
+
+  return {
+    joinedCount,
+    isJoined
+  };
 };
 
 export const viewPost = async (postId: string) => {

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Bell, User } from "lucide-vue-next";
+import { Bell } from "lucide-vue-next";
 
 defineProps<{
   activeTab: "explore" | "matches" | "chat";
@@ -8,7 +8,6 @@ defineProps<{
 
 const emit = defineEmits<{
   (e: "tabChange", tab: "explore" | "matches" | "chat"): void;
-  (e: "profileClick"): void;
   (e: "notificationsClick"): void;
 }>();
 </script>
@@ -75,13 +74,6 @@ const emit = defineEmits<{
         >
           <Bell :size="20" />
           <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-[#ba1a1a] rounded-full"></span>
-        </button>
-        <button
-          @click="emit('profileClick')"
-          className="text-gray-500 hover:text-[#006c49] p-2 hover:bg-gray-50 rounded-full transition-all duration-200 cursor-pointer"
-          aria-label="Profile"
-        >
-          <User :size="20" />
         </button>
       </div>
     </div>

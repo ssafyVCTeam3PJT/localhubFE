@@ -3,13 +3,17 @@ import { ref, watch } from "vue";
 import { X, Check, Sparkles } from "lucide-vue-next";
 import type { Post } from "../types";
 
+type CreatePostPayload = Partial<Post> & { editPassword?: string };
+
 const props = defineProps<{
   initialLocationName?: string | null;
+  initialValues?: Partial<Post> | null;
+  isEditMode?: boolean;
 }>();
 
 const emit = defineEmits<{
   (e: "close"): void;
-  (e: "createPost", newPost: Partial<Post>): void;
+  (e: "createPost", newPost: CreatePostPayload): void;
 }>();
 
 const title = ref("");
@@ -18,6 +22,7 @@ const sport = ref<"러닝" | "농구" | "축구" | "배드민턴" | "기타">("�
 const capacity = ref(4);
 const description = ref("");
 const tagsInput = ref("");
+const editPassword = ref("");
 const selectedImage = ref("https://images.unsplash.com/photo-1476480862126-209bfaa8edc8?q=80&w=600");
 
 const locationPresets = [
@@ -35,12 +40,27 @@ const presetImages = [
 ];
 
 const applyInitialLocation = (value?: string | null) => {
-  const matchedPreset = locationPresets.find((loc) => loc.name === value);
-  locationName.value = matchedPreset?.name ?? locationPresets[0].name;
+  if (value && value.trim()) {
+    locationName.value = value.trim();
+    return;
+  }
+
+  locationName.value = locationPresets[0].name;
 };
 
 watch(() => props.initialLocationName, (value) => {
   applyInitialLocation(value);
+}, { immediate: true });
+
+watch(() => props.initialValues, (value) => {
+  if (!value) return;
+  title.value = value.title ?? "";
+  locationName.value = value.location ?? locationPresets[0].name;
+  sport.value = (value.sport as typeof sport.value) ?? "러닝";
+  capacity.value = value.maxCount ?? 4;
+  description.value = value.description ?? "";
+  tagsInput.value = (value.tags ?? []).join(", ");
+  selectedImage.value = value.image ?? selectedImage.value;
 }, { immediate: true });
 
 const handleSubmit = (e: Event) => {
@@ -50,7 +70,12 @@ const handleSubmit = (e: Event) => {
     return;
   }
 
-  const matchedPreset = locationPresets.find(l => l.name === locationName.value) || locationPresets[0];
+  const matchedPreset = locationPresets.find((loc) => loc.name === locationName.value) || {
+    name: locationName.value || locationPresets[0].name,
+    address: "선택된 지역",
+    lat: 37.5665,
+    lng: 126.9780
+  };
 
   // Split tags
   const tags = tagsInput.value
@@ -74,7 +99,8 @@ const handleSubmit = (e: Event) => {
     joinedCount: 1, // Author joins automatically
     lat: matchedPreset.lat + (Math.random() * 4 - 2), // small offset to prevent exact overlap
     lng: matchedPreset.lng + (Math.random() * 4 - 2),
-    image: selectedImage.value
+    image: selectedImage.value,
+    editPassword: editPassword.value.trim()
   });
 };
 </script>
@@ -88,9 +114,9 @@ const handleSubmit = (e: Event) => {
         <div>
           <h3 className="font-headline-md text-base md:text-lg font-bold text-gray-900 flex items-center gap-1.5">
             <Sparkles :size="18" className="text-[#10b981]" />
-            스포츠 모임 개설하기
+            {{ isEditMode ? '모임 수정하기' : '스포츠 모임 개설하기' }}
           </h3>
-          <p className="text-xs text-gray-500 mt-0.5">새로운 모임을 개설하고 운동 파트너를 구해보세요.</p>
+          <p className="text-xs text-gray-500 mt-0.5">{{ isEditMode ? '모임 정보를 수정하고 다시 공유해보세요.' : '새로운 모임을 개설하고 운동 파트너를 구해보세요.' }}</p>
         </div>
         <button
           @click="emit('close')"
@@ -218,6 +244,22 @@ const handleSubmit = (e: Event) => {
           />
         </div>
 
+        <div className="flex flex-col gap-1">
+          <label className="text-xs font-bold text-gray-600 uppercase tracking-wider">
+            수정/삭제 비밀번호 <span className="text-[#ba1a1a]">*</span>
+          </label>
+          <input
+            type="password"
+            required
+            placeholder="예) 1234"
+            className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-[#006c49] text-gray-800 placeholder-gray-400"
+            v-model="editPassword"
+          />
+          <p className="text-[11px] text-gray-400">
+            나중에 이 비밀번호로 모임을 수정하거나 삭제할 수 있습니다.
+          </p>
+        </div>
+
       </form>
 
       <!-- Modal Footer Controls -->
@@ -234,7 +276,7 @@ const handleSubmit = (e: Event) => {
           @click="handleSubmit"
           className="px-5 py-2.5 bg-[#006c49] hover:bg-[#005236] text-white font-bold text-xs rounded-xl shadow-md transition-all active:scale-95 cursor-pointer"
         >
-          개설 완료
+          {{ isEditMode ? '수정 완료' : '개설 완료' }}
         </button>
       </div>
 

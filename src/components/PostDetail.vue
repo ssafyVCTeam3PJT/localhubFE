@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from "vue";
-import { ArrowLeft, Share2, MapPin, Eye, MessageSquare, Send, Users, CheckCircle2 } from "lucide-vue-next";
+import { ArrowLeft, Share2, MapPin, Eye, MessageSquare, Send, Users, CheckCircle2, Pencil, Trash2 } from "lucide-vue-next";
 import type { Post } from "../types";
 
 const props = defineProps<{
@@ -15,10 +15,14 @@ const emit = defineEmits<{
   (e: "join"): void;
   (e: "goToChat"): void;
   (e: "addComment", postId: string, content: string): void;
+  (e: "requestEdit", post: Post): void;
+  (e: "requestDelete", postId: string, password: string): void;
 }>();
 
 const commentText = ref("");
 const shared = ref(false);
+const passwordInput = ref("");
+const showManageMenu = ref(false);
 
 const handleCommentSubmit = (e: Event) => {
   e.preventDefault();
@@ -31,6 +35,16 @@ const handleShare = () => {
   shared.value = true;
   navigator.clipboard.writeText(window.location.href);
   setTimeout(() => shared.value = false, 2000);
+};
+
+const handleDelete = () => {
+  if (!passwordInput.value.trim()) {
+    alert("비밀번호를 입력해주세요.");
+    return;
+  }
+  emit("requestDelete", props.post.id, passwordInput.value.trim());
+  passwordInput.value = "";
+  showManageMenu.value = false;
 };
 </script>
 
@@ -87,17 +101,47 @@ const handleShare = () => {
     <!-- Main Metadata and Content Grid -->
     <div className="max-w-[720px] w-full mx-auto px-4 md:px-6 py-6 flex flex-col">
       <!-- Status & Post Date -->
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-3">
         <span :className="`text-xs font-extrabold uppercase tracking-widest px-2.5 py-1 rounded-sm ${
           post.status === '모집중' ? 'bg-[#10b981]/10 text-[#006c49]' : 'bg-gray-100 text-gray-500'
         }`">
           {{ post.status }}
         </span>
-        <div className="flex items-center gap-3 text-xs text-gray-400">
+        <div className="flex items-center gap-2 text-xs text-gray-400">
           <span>{{ post.createdAt }}</span>
           <span className="flex items-center gap-0.5">
             <Eye :size="12" /> {{ post.views }}
           </span>
+          <div className="relative">
+            <button
+              @click="showManageMenu = !showManageMenu"
+              className="rounded-full border border-gray-200 bg-white px-2.5 py-1.5 text-gray-600 shadow-xs hover:text-[#006c49]"
+            >
+              관리
+            </button>
+            <div v-if="showManageMenu" className="absolute right-0 mt-2 w-44 rounded-xl border border-gray-100 bg-white p-2 shadow-lg z-20">
+              <button
+                @click="emit('requestEdit', post)"
+                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
+              >
+                <Pencil :size="14" /> 수정하기
+              </button>
+              <div className="mt-2 border-t border-gray-100 pt-2">
+                <input
+                  v-model="passwordInput"
+                  type="password"
+                  placeholder="비밀번호"
+                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+                />
+                <button
+                  @click="handleDelete"
+                  className="mt-2 flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-[#ba1a1a] hover:bg-red-50"
+                >
+                  <Trash2 :size="14" /> 삭제하기
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -106,14 +150,14 @@ const handleShare = () => {
         {{ post.title }}
       </h1>
 
-      <!-- Author / Anonymous Profile -->
+      <!-- Anonymous author note -->
       <div className="flex items-center gap-3 mt-4 border-b border-gray-100 pb-4">
         <div className="w-10 h-10 rounded-full bg-[#006c49]/10 text-[#006c49] font-bold text-sm flex items-center justify-center">
-          U
+          익
         </div>
         <div>
-          <p className="text-sm font-semibold text-gray-800">User8429</p>
-          <p className="text-[11px] text-gray-400 font-medium">동네 든든한 스포츠인</p>
+          <p className="text-sm font-semibold text-gray-800">익명 작성자</p>
+          <p className="text-[11px] text-gray-400 font-medium">로그인 없이 익명으로 운영되는 커뮤니티입니다.</p>
         </div>
       </div>
 

@@ -10,7 +10,7 @@ import CreateMatchModal from "./components/CreateMatchModal.vue";
 import AICompanionDrawer from "./components/AICompanionDrawer.vue";
 import type { Post, ChatConversation, Comment } from "./types";
 import { INITIAL_POSTS, INITIAL_CHATS } from "./initialData";
-import { fetchPosts, fetchPostById, addComment, joinPost, viewPost, createPost as createBackendPost } from "./api";
+import { fetchPosts, fetchPostById, addComment, joinPost, viewPost, createPost as createBackendPost, updatePost, deletePost, mergePostWithLocalState } from "./api";
 import { Compass, Users, MessageSquare, Bell, Check, X } from "lucide-vue-next";
 
 // Navigation State
@@ -35,11 +35,12 @@ const activeChatId = ref<string | null>(null);
 const isCreateModalOpen = ref(false);
 const isAIDrawerOpen = ref(false);
 const createModalInitialLocation = ref<string | null>(null);
+const editingPostId = ref<string | null>(null);
+const editingPostDraft = ref<Partial<Post> | null>(null);
 
 // Notification States
 const toastMessage = ref<string | null>(null);
 const showNotificationPopup = ref(false);
-const profileOpen = ref(false);
 
 // Trigger Toast
 const triggerToast = (msg: string) => {
@@ -102,6 +103,7 @@ const handleJoinPost = async (post: Post) => {
 
   try {
     const result = await joinPost(post.id);
+    const nextJoinedCount = Number.isFinite(result.joinedCount) ? result.joinedCount : post.joinedCount + 1;
 
     joinedPostIds.value.push(post.id);
 
@@ -110,7 +112,7 @@ const handleJoinPost = async (post: Post) => {
       const newChat: ChatConversation = {
         id: post.id,
         title: post.title,
-        joinedCount: result.joinedCount,
+        joinedCount: nextJoinedCount,
         maxCount: post.maxCount,
         unreadCount: 0,
         lastMessage: "모임에 참가하신 것을 환영합니다! 자유롭게 대화해 보세요.",
@@ -131,7 +133,7 @@ const handleJoinPost = async (post: Post) => {
         if (c.id === post.id) {
           return {
             ...c,
-            joinedCount: result.joinedCount
+            joinedCount: nextJoinedCount
           };
         }
         return c;
@@ -142,7 +144,7 @@ const handleJoinPost = async (post: Post) => {
       if (p.id === post.id) {
         return {
           ...p,
-          joinedCount: result.joinedCount
+          joinedCount: nextJoinedCount
         };
       }
       return p;
@@ -151,7 +153,7 @@ const handleJoinPost = async (post: Post) => {
     if (selectedPost.value?.id === post.id) {
       selectedPost.value = {
         ...selectedPost.value,
-        joinedCount: result.joinedCount
+        joinedCount: nextJoinedCount
       };
     }
 
@@ -167,7 +169,8 @@ const openPostDetail = async (post: Post) => {
 
   try {
     const freshPost = await fetchPostById(post.id);
-    selectedPost.value = freshPost;
+    const localPost = posts.value.find((item) => item.id === post.id);
+    selectedPost.value = mergePostWithLocalState(freshPost, localPost);
     await viewPost(post.id);
   } catch (error) {
     detailError.value = error instanceof Error ? error.message : "상세 정보를 불러오지 못했습니다.";
@@ -219,39 +222,141 @@ const handleOpenCreateModal = (locationName?: string | null) => {
 const closeCreateModal = () => {
   isCreateModalOpen.value = false;
   createModalInitialLocation.value = null;
+  editingPostId.value = null;
+  editingPostDraft.value = null;
 };
 
-const handleCreatePost = async (newPostData: Partial<Post>) => {
+const handleCreatePost = async (newPostData: Partial<Post> & { editPassword?: string }) => {
   try {
-    const createdPost = await createBackendPost(newPostData);
-
-    posts.value = [createdPost, ...posts.value];
-    joinedPostIds.value.push(createdPost.id);
-
-    const newChat: ChatConversation = {
-      id: createdPost.id,
-      title: createdPost.title,
-      joinedCount: createdPost.joinedCount,
-      maxCount: createdPost.maxCount,
-      unreadCount: 0,
-      lastMessage: "모임이 방금 개설되었습니다.",
-      lastTime: "방금 전",
-      messages: [
-        {
-          id: `msg-welcome-${Date.now()}`,
-          sender: "System",
-          text: "모임이 개설되었습니다. 다른 멤버가 참가하면 실시간 채팅을 나눌 수 있습니다!",
-          time: "방금 전",
-          isMe: false
-        }
-      ]
+    const payload = {
+      ...newPostData,
+      password: newPostData.editPassword
     };
-    chats.value = [newChat, ...chats.value];
+
+    let savedPost: Post;
+    if (editingPostId.value) {
+      savedPost = await updatePost(editingPostId.value, payload);
+      posts.value = posts.value.map((post) => (post.id === savedPost.id ? savedPost : post));
+      if (selectedPost.value?.id === savedPost.id) {
+        selectedPost.value = savedPost;
+      }
+      triggerToast("모임 정보가 수정되었습니다!");
+    } else {
+      const optimisticId = `temp-${Date.now()}`;
+      const optimisticPost: Post = {
+        id: optimisticId,
+        title: newPostData.title ?? "새 모임",
+        location: newPostData.location ?? "선택된 지역",
+        address: newPostData.address ?? "",
+        sport: (newPostData.sport as Post['sport']) ?? "러닝",
+        status: "모집중",
+        createdAt: "방금 전",
+        author: "나",
+        views: 0,
+        description: newPostData.description ?? "",
+        tags: newPostData.tags ?? [],
+        joinedCount: 1,
+        maxCount: newPostData.maxCount ?? 4,
+        lat: newPostData.lat ?? 0,
+        lng: newPostData.lng ?? 0,
+        comments: [],
+        image: newPostData.image
+      };
+
+      posts.value = [optimisticPost, ...posts.value];
+      joinedPostIds.value = [optimisticId, ...joinedPostIds.value];
+
+      savedPost = await createBackendPost(newPostData);
+      const finalPost = {
+        ...optimisticPost,
+        ...savedPost,
+        id: savedPost.id || optimisticId,
+        title: savedPost.title || optimisticPost.title,
+        location: savedPost.location || optimisticPost.location,
+        address: savedPost.address || optimisticPost.address,
+        sport: savedPost.sport || optimisticPost.sport,
+        description: savedPost.description || optimisticPost.description,
+        tags: savedPost.tags?.length ? savedPost.tags : optimisticPost.tags,
+        joinedCount: savedPost.joinedCount || optimisticPost.joinedCount,
+        maxCount: savedPost.maxCount || optimisticPost.maxCount,
+        lat: savedPost.lat || optimisticPost.lat,
+        lng: savedPost.lng || optimisticPost.lng,
+        comments: savedPost.comments || optimisticPost.comments,
+        image: savedPost.image || optimisticPost.image
+      } as Post;
+
+      posts.value = posts.value.map((post) => (post.id === optimisticId ? finalPost : post));
+      joinedPostIds.value = joinedPostIds.value.map((id) => (id === optimisticId ? finalPost.id : id));
+
+      const chatExists = chats.value.some((chat) => chat.id === finalPost.id);
+      if (!chatExists) {
+        const newChat: ChatConversation = {
+          id: finalPost.id,
+          title: finalPost.title,
+          joinedCount: finalPost.joinedCount,
+          maxCount: finalPost.maxCount,
+          unreadCount: 0,
+          lastMessage: "모임이 방금 개설되었습니다.",
+          lastTime: "방금 전",
+          messages: [
+            {
+              id: `msg-welcome-${Date.now()}`,
+              sender: "System",
+              text: "모임이 개설되었습니다. 채팅방에서 다른 멤버와 바로 대화해보세요!",
+              time: "방금 전",
+              isMe: false
+            }
+          ]
+        };
+        chats.value = [newChat, ...chats.value];
+      }
+
+      selectedPost.value = null;
+      triggerToast("새로운 모임글이 성공적으로 개설되었습니다!");
+    }
 
     isCreateModalOpen.value = false;
-    triggerToast("새로운 모임글이 성공적으로 개설되었습니다!");
+    editingPostId.value = null;
+    editingPostDraft.value = null;
   } catch (error) {
+    posts.value = posts.value.filter((post) => !post.id.startsWith("temp-"));
+    joinedPostIds.value = joinedPostIds.value.filter((id) => !String(id).startsWith("temp-"));
     triggerToast(error instanceof Error ? error.message : "모임 생성에 실패했습니다.");
+  }
+};
+
+const handleRequestEdit = (post: Post) => {
+  editingPostDraft.value = {
+    id: post.id,
+    title: post.title,
+    description: post.description,
+    location: post.location,
+    address: post.address,
+    sport: post.sport,
+    maxCount: post.maxCount,
+    tags: post.tags,
+    lat: post.lat,
+    lng: post.lng,
+    image: post.image
+  };
+  editingPostId.value = post.id;
+  createModalInitialLocation.value = post.location;
+  isCreateModalOpen.value = true;
+  selectedPost.value = null;
+  triggerToast("수정할 내용을 입력한 뒤 저장해주세요.");
+};
+
+const handleRequestDelete = async (postId: string, password: string) => {
+  try {
+    await deletePost(postId, password);
+    posts.value = posts.value.filter((post) => post.id !== postId);
+    joinedPostIds.value = joinedPostIds.value.filter((id) => id !== postId);
+    if (selectedPost.value?.id === postId) {
+      selectedPost.value = null;
+    }
+    triggerToast("모임이 삭제되었습니다.");
+  } catch (error) {
+    triggerToast(error instanceof Error ? error.message : "삭제에 실패했습니다.");
   }
 };
 
@@ -275,7 +380,6 @@ const handleTabChange = (tab: "explore" | "matches" | "chat") => {
     <Navbar
       :activeTab="activeTab"
       @tabChange="handleTabChange"
-      @profileClick="profileOpen = true"
       @notificationsClick="showNotificationPopup = true"
       :unreadCount="totalUnread"
     />
@@ -296,6 +400,8 @@ const handleTabChange = (tab: "explore" | "matches" | "chat") => {
             @join="handleJoinPost(selectedPost)"
             @goToChat="handleGoToChat(selectedPost.id)"
             @addComment="handleAddComment"
+            @requestEdit="handleRequestEdit"
+            @requestDelete="handleRequestDelete"
           />
         </div>
 
@@ -322,6 +428,8 @@ const handleTabChange = (tab: "explore" | "matches" | "chat") => {
             @join="handleJoinPost(selectedPost)"
             @goToChat="handleGoToChat(selectedPost.id)"
             @addComment="handleAddComment"
+            @requestEdit="handleRequestEdit"
+            @requestDelete="handleRequestDelete"
           />
         </div>
         <div v-else className="w-full h-full">
@@ -375,59 +483,6 @@ const handleTabChange = (tab: "explore" | "matches" | "chat") => {
     <div v-if="toastMessage" className="fixed bottom-20 md:bottom-6 left-1/2 transform -translate-x-1/2 z-50 bg-gray-900/90 backdrop-blur-xs text-white text-xs font-bold px-5 py-3 rounded-xl shadow-2xl flex items-center gap-2 animate-bounce">
       <Check :size="14" className="text-[#10b981]" />
       <span>{{ toastMessage }}</span>
-    </div>
-
-    <!-- Profile Sidebar/Modal overlay -->
-    <div v-if="profileOpen" className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl border border-gray-100">
-        <div className="flex justify-between items-start">
-          <h3 className="font-headline-md text-base font-bold text-gray-900">내 프로필</h3>
-          <button @click="profileOpen = false" className="text-gray-400 hover:text-gray-600">
-            <X :size="18" />
-          </button>
-        </div>
-        
-        <div className="flex flex-col items-center text-center py-6 border-b border-gray-50">
-          <div className="w-16 h-16 bg-[#006c49]/10 text-[#006c49] text-xl font-bold rounded-full flex items-center justify-center mb-3">
-            U
-          </div>
-          <h4 className="font-bold text-gray-900 text-base">User8429</h4>
-          <p className="text-xs text-gray-500 mt-0.5">서울특별시 동작구</p>
-          
-          <div className="flex gap-4 mt-4 text-xs font-bold">
-            <div className="bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-100">
-              <span className="block text-gray-400">가입 모임</span>
-              <span className="text-[#006c49] text-sm mt-0.5 block">{{ joinedPostIds.length }}개</span>
-            </div>
-            <div className="bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-100">
-              <span className="block text-gray-400">매너 온도</span>
-              <span className="text-[#10b981] text-sm mt-0.5 block">36.5°C</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="pt-4 space-y-2">
-          <button
-            @click="() => {
-              profileOpen = false;
-              activeTab = 'matches';
-              selectedPost = null;
-            }"
-            className="w-full text-left font-bold text-xs text-gray-700 hover:bg-gray-50 p-2.5 rounded-xl transition-colors"
-          >
-            📅 가입한 스포츠 매치 일정 조회
-          </button>
-          <button
-            @click="() => {
-              profileOpen = false;
-              isCreateModalOpen = true;
-            }"
-            className="w-full text-left font-bold text-xs text-[#006c49] hover:bg-emerald-50 p-2.5 rounded-xl transition-colors"
-          >
-            ➕ 새로운 동네 모임 개설
-          </button>
-        </div>
-      </div>
     </div>
 
     <!-- Notifications Sidebar/Modal overlay -->
@@ -519,6 +574,8 @@ const handleTabChange = (tab: "explore" | "matches" | "chat") => {
     <CreateMatchModal
       v-if="isCreateModalOpen"
       :initialLocationName="createModalInitialLocation"
+      :initialValues="editingPostDraft"
+      :isEditMode="Boolean(editingPostId)"
       @close="closeCreateModal"
       @createPost="handleCreatePost"
     />

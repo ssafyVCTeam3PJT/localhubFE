@@ -351,6 +351,10 @@ watch(() => searchQuery.value, () => {
   if (selectedLocation.value && !locationGroups.value[selectedLocation.value]) {
     selectedLocation.value = null;
   }
+
+  if (isMapReady.value && mapInstance.value && window.naver?.maps) {
+    renderMap();
+  }
 });
 
 watch(zoom, (newZoom) => {
@@ -564,10 +568,10 @@ onBeforeUnmount(() => {
                   <div class="flex items-center justify-between border-t border-gray-50 pt-3 mt-3">
                     <div class="flex items-center gap-2">
                       <div class="w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 font-bold text-[10px]">
-                        {{ locationGroups[selectedLocation].posts[carouselIndex].author[0] }}
+                        익
                       </div>
                       <span class="text-xs font-semibold text-gray-600">
-                        User8429
+                        익명
                       </span>
                     </div>
 
