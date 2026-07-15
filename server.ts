@@ -69,7 +69,7 @@ app.use("/api", async (req, res, next) => {
     res.status(upstreamResponse.status);
 
     upstreamResponse.headers.forEach((value, key) => {
-      if (key === "content-length" || key === "transfer-encoding") {
+      if (key === "content-length" || key === "transfer-encoding" || key === "content-encoding") {
         return;
       }
       res.setHeader(key, value);
