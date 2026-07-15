@@ -31,22 +31,26 @@ LocalHub는 동네 이웃들과 함께 러닝, 농구, 축구, 배드민턴 등 
 
 ## 📸 화면 구성 (Screenshots / UI Preview)
 
-*(아래 주석 처리된 부분에 캡처한 이미지 URL이나 상대 경로를 넣어주세요)*
-
 ### 메인 화면 및 지도 (Interactive Map)
-<!-- ![메인 지도 화면](./docs/images/map_screenshot.png) -->
+<img width="2560" height="1346" alt="스크린샷 2026-07-15 143714" src="https://github.com/user-attachments/assets/953b2e1c-a1b0-452b-bbc7-c30e53dedcde" />
+<img width="2560" height="1354" alt="스크린샷 2026-07-15 144500" src="https://github.com/user-attachments/assets/fcd58922-3c3c-4065-8e19-efd75cac4521" />
 - 장소 기반 핀 마커 및 날씨 연동 팝업
 
+<br>
+
 ### 모임 찾기 및 리스트 (Matches List)
-<!-- ![모집글 리스트 화면](./docs/images/matches_screenshot.png) -->
+<img width="2560" height="1349" alt="스크린샷 2026-07-15 144514" src="https://github.com/user-attachments/assets/e4704439-dde5-49ae-95d3-7acf1799a3f2" />
+<img width="2560" height="1346" alt="스크린샷 2026-07-15 144508" src="https://github.com/user-attachments/assets/7c13529b-622a-49be-881d-b8dde2c721a6" />
+<img width="2558" height="1351" alt="image" src="https://github.com/user-attachments/assets/8c45cce2-aeff-4cab-a118-151724d22fb6" />
+
+
 - 카테고리별 모임 검색 및 통계 확인
 
-### 실시간 채팅 (Chat Room)
-<!-- ![채팅방 화면](./docs/images/chat_screenshot.png) -->
-- 참가자 간 자유로운 일정/장소 조율
+
 
 ### AI 챗봇 서랍 (AI Sport Mate)
-<!-- ![AI 챗봇 화면](./docs/images/chatbot_screenshot.png) -->
+<img width="2559" height="1347" alt="image" src="https://github.com/user-attachments/assets/d70f8f1e-fe40-4b54-a921-db2713645db4" />
+
 - 질문 응답 및 모집글 작성 지원
 
 ---
