@@ -20,6 +20,7 @@ interface LocationMeta {
   lng: number;
   weatherCity: string;
   category?: string;
+  imageUrl?: string;
 }
 
 interface WeatherData {
@@ -121,7 +122,8 @@ const locationGroups = computed(() => {
     lat: place.lat,
     lng: place.lng,
     weatherCity: "Seoul",
-    category: place.category ?? "기타"
+    category: place.category ?? "기타",
+    imageUrl: place.imageUrl
   }] as const);
 
   const merged = [...entries, ...backendEntries];
@@ -477,12 +479,16 @@ onBeforeUnmount(() => {
         <div class="bg-white rounded-[24px] shadow-[0_12px_40px_rgba(0,0,0,0.15)] border border-gray-100 w-full max-w-lg overflow-hidden flex flex-col relative animate-popup">
           <button
             @click="selectedLocation = null"
-            class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 hover:bg-gray-50 p-1.5 rounded-full z-10 transition-colors"
+            class="absolute top-4 right-4 text-white hover:text-gray-200 bg-black/20 hover:bg-black/40 p-1.5 rounded-full z-10 transition-colors backdrop-blur-sm shadow-sm"
           >
             <Plus :size="20" class="rotate-45" />
           </button>
 
-          <div class="p-6 pb-4">
+          <div v-if="locationGroups[selectedLocation].imageUrl" class="h-36 sm:h-48 w-full bg-gray-100 relative overflow-hidden">
+            <img :src="locationGroups[selectedLocation].imageUrl" :alt="selectedLocation" class="w-full h-full object-cover" />
+          </div>
+
+          <div class="p-6 pb-4 pt-5">
             <div class="flex items-start justify-between gap-3">
               <div class="flex-1 min-w-0">
                 <h3 class="font-headline-lg text-[#191c1e] text-xl font-bold tracking-tight">

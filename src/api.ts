@@ -45,6 +45,7 @@ export interface BackendPlaceResponse {
   lng: number;
   postCount: number;
   category?: string | null;
+  imageUrl?: string;
 }
 
 export const normalizeComment = (raw: BackendCommentResponse): Comment => ({
@@ -147,13 +148,45 @@ const requestJson = async <T>(path: string, options?: RequestInit): Promise<T> =
 };
 
 export const fetchPosts = async (): Promise<Post[]> => {
-  const payload = await requestJson<ApiEnvelope<{ posts: BackendPostResponse[] }>>('/posts');
-  return (payload.data?.posts ?? []).map(normalizePost);
+  const [postsPayload, places] = await Promise.all([
+    requestJson<ApiEnvelope<{ posts: BackendPostResponse[] }>>('/posts'),
+    fetchPlaces()
+  ]);
+  return (postsPayload.data?.posts ?? []).map((raw) => {
+    const post = normalizePost(raw);
+    const matchedPlace = places.find(place => 
+      place.name.toLowerCase().includes(post.location.toLowerCase()) ||
+      post.location.toLowerCase().includes(place.name.toLowerCase()) || 
+      post.title.toLowerCase().includes(place.name.toLowerCase()) ||
+      (post.location.includes("보라매") && place.name.includes("보라매")) ||
+      (post.location.includes("한강") && place.name.includes("한강")) ||
+      (post.location.includes("관악") && place.name.includes("관악"))
+    );
+    if (matchedPlace?.imageUrl) {
+      post.image = matchedPlace.imageUrl;
+    }
+    return post;
+  });
 };
 
 export const fetchPostById = async (postId: string): Promise<Post> => {
-  const payload = await requestJson<ApiEnvelope<BackendPostResponse>>(`/posts/${postId}`);
-  return normalizePost(payload.data);
+  const [payload, places] = await Promise.all([
+    requestJson<ApiEnvelope<BackendPostResponse>>(`/posts/${postId}`),
+    fetchPlaces()
+  ]);
+  const post = normalizePost(payload.data);
+  const matchedPlace = places.find(place => 
+    place.name.toLowerCase().includes(post.location.toLowerCase()) ||
+    post.location.toLowerCase().includes(place.name.toLowerCase()) || 
+    post.title.toLowerCase().includes(place.name.toLowerCase()) ||
+    (post.location.includes("보라매") && place.name.includes("보라매")) ||
+    (post.location.includes("한강") && place.name.includes("한강")) ||
+    (post.location.includes("관악") && place.name.includes("관악"))
+  );
+  if (matchedPlace?.imageUrl) {
+    post.image = matchedPlace.imageUrl;
+  }
+  return post;
 };
 
 export const fetchPlaces = async (): Promise<BackendPlaceResponse[]> => {

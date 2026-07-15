@@ -23,6 +23,17 @@ const myJoinedPostCount = computed(() => {
   return props.posts.filter((post) => props.joinedPostIds.includes(post.id)).length;
 });
 
+const soccerMatesCount = computed(() => {
+  return props.posts
+    .filter(p => p.sport === "축구")
+    .reduce((sum, p) => sum + p.joinedCount, 0);
+});
+
+const runningOpenCount = computed(() => {
+  return props.posts.filter(p => p.sport === "러닝" && p.status === "모집중").length;
+});
+
+
 // Filter posts based on tabMode, search, and sport filter
 const filteredPosts = computed(() => {
   return props.posts.filter((post) => {
@@ -65,17 +76,17 @@ const filteredPosts = computed(() => {
 
         <!-- Quick Stats -->
         <div className="flex gap-4 mt-4 md:mt-6 text-xs text-emerald-100/90 font-semibold">
-          <span>⚽ 축구 메이트 32명 활동중</span>
-          <span>🏃 러닝 모임 12개 오픈</span>
+          <span>⚽ 축구 메이트 {{ soccerMatesCount }}명 활동중</span>
+          <span>🏃 러닝 모임 {{ runningOpenCount }}개 오픈</span>
         </div>
       </div>
     </div>
 
     <!-- Dashboard Tabs & Controls -->
-    <div className="max-w-[720px] mx-auto px-4 mt-6">
+    <div className="max-w-[720px] mx-auto px-4 mt-6 flex flex-col gap-3">
       
       <!-- Toggle Mode Tab Buttons -->
-      <div className="flex bg-gray-100 p-1 rounded-xl mb-4 border border-gray-200/50">
+      <div className="flex bg-gray-100 p-1 rounded-xl border border-gray-200/50">
         <button
           @click="tabMode = 'all'"
           :className="`flex-1 text-center py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
@@ -95,7 +106,7 @@ const filteredPosts = computed(() => {
       </div>
 
       <!-- Search Input inline -->
-      <div className="relative mb-4">
+      <div className="relative">
         <input
           type="text"
           placeholder="제목, 공원 이름, 해시태그로 검색..."
@@ -106,7 +117,7 @@ const filteredPosts = computed(() => {
       </div>
 
       <!-- Sports Category Filter Pill Scroller -->
-      <div className="flex gap-2 overflow-x-auto no-scrollbar pb-3 mb-2 scroll-smooth">
+      <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1 scroll-smooth">
         <button
           v-for="sport in sportsFilters"
           :key="sport"
@@ -122,7 +133,7 @@ const filteredPosts = computed(() => {
       </div>
 
       <!-- List of Match Cards -->
-      <div className="space-y-4 mt-3">
+      <div className="space-y-4 mt-1">
         <div v-if="filteredPosts.length === 0" className="bg-white rounded-2xl border border-gray-100 p-12 text-center shadow-xs">
           <p className="text-sm text-gray-500">
             {{ tabMode === 'my' 
