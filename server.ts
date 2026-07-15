@@ -40,7 +40,8 @@ app.use("/api", async (req, res, next) => {
   }
 
   try {
-    const targetUrl = new URL(req.originalUrl, "http://127.0.0.1:8000");
+    const backendBaseUrl = process.env.BACKEND_URL || "http://127.0.0.1:8000";
+    const targetUrl = new URL(req.originalUrl, backendBaseUrl);
     const headers = new Headers();
 
     Object.entries(req.headers).forEach(([key, value]) => {
