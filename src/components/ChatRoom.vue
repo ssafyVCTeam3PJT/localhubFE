@@ -30,10 +30,20 @@ watch(localMessages, () => {
 }, { deep: true });
 
 onMounted(() => {
-  const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-  const wsUrl = `${protocol}//${window.location.host}/api/ws/chat/${props.chat.id}?userId=${profile.value.userId}&nickname=${encodeURIComponent(profile.value.nickname)}`;
+  // 프론트/백엔드가 모두 분리되어 배포(Render)되므로, 
+  // 프록시 서버를 거치지 않고 백엔드 WebSocket 주소로 직접 연결 (WSS)
+  const backendWsHost = "localhubbe.onrender.com";
+  const wsUrl = `wss://${backendWsHost}/api/ws/chat/${props.chat.id}?userId=${profile.value.userId}&nickname=${encodeURIComponent(profile.value.nickname)}`;
   
   ws = new WebSocket(wsUrl);
+
+  ws.onopen = () => {
+    console.log("WebSocket connected!");
+  };
+
+  ws.onerror = (error) => {
+    console.error("WebSocket Error:", error);
+  };
 
   ws.onmessage = (event) => {
     const data = JSON.parse(event.data);
@@ -57,8 +67,12 @@ const handleSend = (e: Event) => {
   e.preventDefault();
   if (!inputText.value.trim() || !ws) return;
   
-  ws.send(JSON.stringify({ content: inputText.value.trim() }));
-  inputText.value = "";
+  if (ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({ content: inputText.value.trim() }));
+    inputText.value = "";
+  } else {
+    alert("채팅 서버와 연결되지 않았습니다. 잠시 후 다시 시도해주세요.");
+  }
 };
 
 const getInitial = (sender: string) => {
