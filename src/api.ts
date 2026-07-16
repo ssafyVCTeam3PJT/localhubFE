@@ -1,4 +1,5 @@
 import type { Post, Comment } from './types';
+import { getOrCreateProfile } from './userProfile';
 
 const API_BASE_URL = '/api';
 
@@ -245,7 +246,8 @@ export const addComment = async (postId: string, content: string) => {
 };
 
 export const joinPost = async (postId: string) => {
-  const payload = await requestJson<ApiEnvelope<any>>(`/posts/${postId}/join`, {
+  const profile = getOrCreateProfile();
+  const payload = await requestJson<ApiEnvelope<any>>(`/posts/${postId}/join?userId=${profile.userId}`, {
     method: 'POST'
   });
 
@@ -262,7 +264,8 @@ export const joinPost = async (postId: string) => {
 };
 
 export const leavePost = async (postId: string) => {
-  const payload = await requestJson<ApiEnvelope<any>>(`/posts/${postId}/join`, {
+  const profile = getOrCreateProfile();
+  const payload = await requestJson<ApiEnvelope<any>>(`/posts/${postId}/join?userId=${profile.userId}`, {
     method: 'DELETE'
   });
 
