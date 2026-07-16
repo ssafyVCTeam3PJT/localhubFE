@@ -86,6 +86,18 @@ const loadPosts = async () => {
   try {
     const backendPosts = await fetchPosts();
     posts.value = backendPosts;
+    
+    const joinedPosts = backendPosts.filter(p => joinedPostIds.value.includes(p.id));
+    chats.value = joinedPosts.map(p => ({
+      id: p.id,
+      title: p.title,
+      joinedCount: p.joinedCount,
+      maxCount: p.maxCount,
+      unreadCount: 0,
+      lastMessage: "새로운 메시지를 확인해보세요!",
+      lastTime: "최근",
+      messages: []
+    }));
   } catch (error) {
     postsError.value = error instanceof Error ? error.message : "게시글을 불러오지 못했습니다.";
     posts.value = INITIAL_POSTS;
