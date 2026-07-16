@@ -107,7 +107,7 @@ const handleSubmit = (e: Event) => {
 </script>
 
 <template>
-  <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 overflow-y-auto">
+  <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 overflow-y-auto">
     <div className="bg-white rounded-[24px] shadow-2xl border border-gray-100 w-full max-w-lg overflow-hidden flex flex-col my-8">
       
       <!-- Modal Header -->
