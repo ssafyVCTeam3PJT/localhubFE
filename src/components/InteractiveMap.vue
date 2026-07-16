@@ -4,6 +4,7 @@ import { MapPin, Plus, Minus, Bot, Star, ChevronLeft, ChevronRight, Search, Clou
 import type { Post } from "../types";
 import { fetchPlaces, type BackendPlaceResponse } from "../api";
 import { getCategoryEmoji } from "../mapCategory";
+import { handleImageError } from "../image";
 
 declare global {
   interface Window {
@@ -218,7 +219,7 @@ const renderMap = () => {
       position: new window.naver.maps.LatLng(meta.lat, meta.lng),
       title: locationName,
       icon: {
-        content: `<div style="display:flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:999px;background:#fff;border:2px solid #10b981;box-shadow:0 6px 18px rgba(0,0,0,0.18);font-size:20px;line-height:1;">${markerIcon}</div>`,
+        content: `<div style="display:flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:999px;background:#fff;border:2px solid #ec4899;box-shadow:0 6px 18px rgba(0,0,0,0.18);font-size:20px;line-height:1;">${markerIcon}</div>`,
         anchor: new window.naver.maps.Point(20, 20)
       }
     });
@@ -464,7 +465,7 @@ onBeforeUnmount(() => {
     <div class="absolute bottom-6 right-6 flex flex-col gap-3 z-10 items-end">
       <button
         @click="emit('openAIDrawer')"
-        class="relative w-14 h-14 bg-[#006c49] hover:bg-[#005236] text-white rounded-full shadow-[0_8px_24px_rgba(0,108,73,0.3)] flex items-center justify-center hover:scale-105 active:scale-95 transition-all duration-300 group cursor-pointer border border-[#6ffbbe]/20"
+        class="relative w-14 h-14 bg-[#006c49] hover:bg-[#005236] text-white rounded-full shadow-[0_8px_24px_rgba(190,24,93,0.3)] flex items-center justify-center hover:scale-105 active:scale-95 transition-all duration-300 group cursor-pointer border border-[#6ffbbe]/20"
         aria-label="AI Coach Companion"
       >
         <span class="absolute inset-0 rounded-full bg-[#10b981]/20 animate-pulse"></span>
@@ -485,7 +486,7 @@ onBeforeUnmount(() => {
           </button>
 
           <div v-if="locationGroups[selectedLocation].imageUrl" class="h-36 sm:h-48 w-full bg-gray-100 relative overflow-hidden">
-            <img :src="locationGroups[selectedLocation].imageUrl" :alt="selectedLocation" class="w-full h-full object-cover" />
+            <img :src="locationGroups[selectedLocation].imageUrl" :alt="selectedLocation" class="w-full h-full object-cover" @error="handleImageError" />
           </div>
 
           <div class="p-6 pb-4 pt-5">

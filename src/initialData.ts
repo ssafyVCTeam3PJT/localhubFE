@@ -68,7 +68,7 @@ export const INITIAL_POSTS: Post[] = [
     maxCount: 6,
     lat: 45,
     lng: 20,
-    image: "https://images.unsplash.com/photo-1551632811-561730d1e4a6?q=80&w=1000",
+    image: "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&q=80&w=1000",
     comments: []
   },
   {

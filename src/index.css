@@ -7,6 +7,67 @@
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
 }
 
+/*
+ * LocalHub rose theme
+ * Primary #BE185D keeps white text above WCAG AA contrast, while the brighter
+ * #EC4899 is reserved for accents and progress states so the interface stays
+ * lively without becoming tiring to scan.
+ */
+:root {
+  --color-brand: #be185d;
+  --color-brand-hover: #9d174d;
+  --color-accent: #ec4899;
+  --color-brand-soft: #fce7f3;
+  --color-brand-tint: #fdf2f8;
+  --color-brand-text: #831843;
+  --color-brand-highlight: #fbcfe8;
+}
+
+/* Keep the existing utility markup centrally themed while the UI migrates to
+ * semantic design tokens. Attribute selectors deliberately cover arbitrary
+ * Tailwind colour utilities used across the Vue components. */
+[class~="bg-[#006c49]"] { background-color: var(--color-brand) !important; }
+[class~="text-[#006c49]"] { color: var(--color-brand) !important; }
+[class~="border-[#006c49]"] { border-color: var(--color-brand) !important; }
+[class~="fill-[#006c49]"] { fill: var(--color-brand) !important; }
+[class~="bg-[#006c49]/5"] { background-color: color-mix(in srgb, var(--color-brand) 5%, transparent) !important; }
+[class~="bg-[#006c49]/10"] { background-color: color-mix(in srgb, var(--color-brand) 10%, transparent) !important; }
+[class~="border-[#006c49]/10"] { border-color: color-mix(in srgb, var(--color-brand) 10%, transparent) !important; }
+[class~="ring-[#006c49]/10"] { --tw-ring-color: color-mix(in srgb, var(--color-brand) 10%, transparent) !important; }
+[class~="focus:border-[#006c49]"]:focus,
+[class~="focus-within:border-[#006c49]"]:focus-within { border-color: var(--color-brand) !important; }
+[class~="hover:bg-[#005236]"]:hover { background-color: var(--color-brand-hover) !important; }
+[class~="hover:bg-[#006c49]"]:hover { background-color: var(--color-brand) !important; }
+[class~="hover:text-[#006c49]"]:hover { color: var(--color-brand) !important; }
+[class~="hover:text-[#005236]"]:hover { color: var(--color-brand-hover) !important; }
+
+[class~="bg-[#10b981]"] { background-color: var(--color-accent) !important; }
+[class~="text-[#10b981]"] { color: var(--color-accent) !important; }
+[class~="border-[#10b981]"] { border-color: var(--color-accent) !important; }
+[class~="bg-[#10b981]/10"] { background-color: color-mix(in srgb, var(--color-accent) 10%, transparent) !important; }
+[class~="bg-[#10b981]/15"] { background-color: color-mix(in srgb, var(--color-accent) 15%, transparent) !important; }
+[class~="bg-[#10b981]/20"] { background-color: color-mix(in srgb, var(--color-accent) 20%, transparent) !important; }
+[class~="border-[#10b981]/10"] { border-color: color-mix(in srgb, var(--color-accent) 10%, transparent) !important; }
+[class~="accent-[#10b981]"] { accent-color: var(--color-accent) !important; }
+[class~="hover:bg-[#0d9488]"]:hover { background-color: #db2777 !important; }
+
+[class~="from-[#006c49]"] { --tw-gradient-from: var(--color-brand) var(--tw-gradient-from-position) !important; }
+[class~="to-[#10b981]"] { --tw-gradient-to: var(--color-accent) var(--tw-gradient-to-position) !important; }
+[class~="text-[#005236]"] { color: var(--color-brand-hover) !important; }
+[class~="text-[#00714e]"] { color: var(--color-brand-hover) !important; }
+[class~="fill-[#00714e]"] { fill: var(--color-brand-hover) !important; }
+[class~="bg-[#64f9bc]/15"] { background-color: color-mix(in srgb, var(--color-brand-soft) 70%, transparent) !important; }
+[class~="bg-[#4edea3]/10"] { background-color: color-mix(in srgb, #f9a8d4 20%, transparent) !important; }
+[class~="text-[#6ffbbe]"] { color: var(--color-brand-highlight) !important; }
+[class~="border-[#6ffbbe]/20"] { border-color: color-mix(in srgb, var(--color-brand-highlight) 20%, transparent) !important; }
+
+[class~="bg-emerald-50"] { background-color: var(--color-brand-tint) !important; }
+[class~="bg-emerald-50/50"] { background-color: color-mix(in srgb, var(--color-brand-tint) 50%, transparent) !important; }
+[class~="bg-emerald-100"] { background-color: var(--color-brand-soft) !important; }
+[class~="text-emerald-600"] { color: #db2777 !important; }
+[class~="text-emerald-100"], [class~="text-emerald-100/90"] { color: var(--color-brand-soft) !important; }
+[class~="border-emerald-100"], [class~="border-emerald-100/30"] { border-color: var(--color-brand-soft) !important; }
+
 /* Custom scrollbars and transitions utility classes */
 @layer utilities {
   .no-scrollbar::-webkit-scrollbar {

@@ -2,6 +2,7 @@
 import { ref, watch } from "vue";
 import { X, Check, Sparkles } from "lucide-vue-next";
 import type { Post } from "../types";
+import { handleImageError } from "../image";
 
 type CreatePostPayload = Partial<Post> & { editPassword?: string };
 
@@ -36,7 +37,7 @@ const presetImages = [
   { label: "🏃 러닝/달리기", url: "https://images.unsplash.com/photo-1476480862126-209bfaa8edc8?q=80&w=600" },
   { label: "🏀 농구/길거리", url: "https://images.unsplash.com/photo-1546519638-68e109498ffc?q=80&w=600" },
   { label: "🏸 배드민턴/실내", url: "https://images.unsplash.com/photo-1626224583764-f87db24ac4ea?q=80&w=600" },
-  { label: "🧗 등산/액티비티", url: "https://images.unsplash.com/photo-1551632811-561730d1e4a6?q=80&w=600" }
+  { label: "🧗 등산/액티비티", url: "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&q=80&w=600" }
 ];
 
 const applyInitialLocation = (value?: string | null) => {
@@ -206,7 +207,7 @@ const handleSubmit = (e: Event) => {
                 selectedImage === img.url ? 'border-[#006c49] ring-2 ring-[#006c49]/10' : 'border-transparent opacity-80 hover:opacity-100'
               }`"
             >
-              <img :src="img.url" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+              <img :src="img.url" className="w-full h-full object-cover" referrerPolicy="no-referrer" @error="handleImageError" />
               <div className="absolute inset-0 bg-black/40 flex items-center px-3 justify-between">
                 <span className="text-white text-[11px] font-bold">{{ img.label }}</span>
                 <div v-if="selectedImage === img.url" className="w-4 h-4 rounded-full bg-[#10b981] flex items-center justify-center text-white">

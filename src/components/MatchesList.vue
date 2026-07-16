@@ -2,6 +2,7 @@
 import { ref, computed } from "vue";
 import { Search, MapPin, Users, Plus, Check, ChevronRight } from "lucide-vue-next";
 import type { Post } from "../types";
+import { handleImageError } from "../image";
 
 const props = defineProps<{
   posts: Post[];
@@ -64,18 +65,18 @@ const filteredPosts = computed(() => {
   <div class="flex-1 bg-gray-50/50 h-full overflow-y-auto pb-10">
     
     <!-- Search Header Banner -->
-    <div class="bg-gradient-to-br from-[#006c49] to-[#10b981] text-white px-6 py-8 md:py-12 relative overflow-hidden">
+    <div class="bg-gradient-to-br from-[#fdf2f8] to-[#f9a8d4] px-6 py-8 md:py-12 relative overflow-hidden">
       <div class="absolute inset-0 bg-grid-white/[0.05] bg-[size:20px_20px]"></div>
       <div class="max-w-[720px] mx-auto relative z-10">
-        <h2 class="font-headline-lg text-2xl md:text-3xl font-extrabold tracking-tight">
+        <h2 class="font-headline-lg text-2xl md:text-3xl font-extrabold tracking-tight text-[#831843]">
           동네 스포츠 메이트 찾기
         </h2>
-        <p class="text-white/80 text-xs md:text-sm mt-1 font-medium">
+        <p class="text-[#9d174d] text-xs md:text-sm mt-1 font-semibold">
           이웃집 이웃들과 같이 운동해요. 러닝, 축구, 배드민턴 동료를 만나보세요.
         </p>
 
         <!-- Quick Stats -->
-        <div class="flex gap-4 mt-4 md:mt-6 text-xs text-emerald-100/90 font-semibold">
+        <div class="flex gap-4 mt-4 md:mt-6 text-xs text-[#9d174d] font-bold">
           <span>⚽ 축구 메이트 {{ soccerMatesCount }}명 활동중</span>
           <span>🏃 러닝 모임 {{ runningOpenCount }}개 오픈</span>
         </div>
@@ -163,6 +164,7 @@ const filteredPosts = computed(() => {
                 :alt="post.title"
                 class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                 referrerPolicy="no-referrer"
+                @error="handleImageError"
               />
             </div>
 

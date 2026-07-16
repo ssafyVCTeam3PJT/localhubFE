@@ -111,22 +111,22 @@ const suggestions = [
   <div class="fixed inset-y-0 right-0 w-full max-w-md bg-white shadow-2xl border-l border-gray-100 z-50 flex flex-col h-full animate-slide-in">
     
     <!-- Header -->
-    <div class="p-4 border-b border-gray-100 flex justify-between items-center bg-gradient-to-r from-[#006c49] to-[#10b981] text-white">
+    <div class="p-4 border-b border-pink-200 flex justify-between items-center bg-gradient-to-r from-[#fdf2f8] to-[#f9a8d4]">
       <div class="flex items-center gap-2">
-        <div class="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center text-white">
+        <div class="w-9 h-9 rounded-full bg-white/70 flex items-center justify-center text-[#831843]">
           <Bot :size="20" />
         </div>
         <div>
-          <h3 class="font-headline-md text-sm md:text-base font-bold flex items-center gap-1">
+          <h3 class="font-headline-md text-sm md:text-base font-bold flex items-center gap-1 text-[#831843]">
             AI Sport Mate
-            <Sparkles :size="14" class="text-[#6ffbbe] animate-pulse" />
+            <Sparkles :size="14" class="text-[#be185d] animate-pulse" />
           </h3>
-          <p class="text-[10px] text-emerald-100">동네 스포츠 AI 비서</p>
+          <p class="text-[10px] text-[#9d174d] font-semibold">동네 스포츠 AI 비서</p>
         </div>
       </div>
       <button
         @click="emit('close')"
-        class="text-white hover:text-emerald-100 hover:bg-white/10 p-1.5 rounded-full transition-colors cursor-pointer"
+        class="text-[#831843] hover:text-[#9d174d] hover:bg-white/60 p-1.5 rounded-full transition-colors cursor-pointer"
         aria-label="Close drawer"
       >
         <X :size="20" />

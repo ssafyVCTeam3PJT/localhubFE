@@ -2,6 +2,7 @@
 import { ref } from "vue";
 import { ArrowLeft, Share2, MapPin, Eye, MessageSquare, Send, Users, CheckCircle2, Pencil, Trash2 } from "lucide-vue-next";
 import type { Post } from "../types";
+import { handleImageError } from "../image";
 
 const props = defineProps<{
   post: Post;
@@ -65,6 +66,7 @@ const handleDelete = () => {
         :alt="post.title"
         className="w-full h-full object-cover"
         referrerPolicy="no-referrer"
+        @error="handleImageError"
       />
       <!-- Soft overlay gradient -->
       <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-black/30"></div>

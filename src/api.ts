@@ -19,6 +19,8 @@ export interface BackendPostResponse {
   lat: number;
   lng: number;
   tags: string[];
+  image?: string;
+  imageUrl?: string;
   commentCount?: number;
   isJoined?: boolean;
   comments?: BackendCommentResponse[];
@@ -100,7 +102,7 @@ export const normalizePost = (raw: any): Post => {
     lat: post.lat ?? 0,
     lng: post.lng ?? 0,
     comments: (post.comments ?? []).map(normalizeComment),
-    image: undefined
+    image: post.imageUrl ?? post.image
   };
 };
 
@@ -162,7 +164,7 @@ export const fetchPosts = async (): Promise<Post[]> => {
       (post.location.includes("한강") && place.name.includes("한강")) ||
       (post.location.includes("관악") && place.name.includes("관악"))
     );
-    if (matchedPlace?.imageUrl) {
+    if (!post.image && matchedPlace?.imageUrl) {
       post.image = matchedPlace.imageUrl;
     }
     return post;
@@ -183,7 +185,7 @@ export const fetchPostById = async (postId: string): Promise<Post> => {
     (post.location.includes("한강") && place.name.includes("한강")) ||
     (post.location.includes("관악") && place.name.includes("관악"))
   );
-  if (matchedPlace?.imageUrl) {
+  if (!post.image && matchedPlace?.imageUrl) {
     post.image = matchedPlace.imageUrl;
   }
   return post;
