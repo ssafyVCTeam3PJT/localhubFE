@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted, watch } from "vue";
 import Navbar from "./components/Navbar.vue";
 import InteractiveMap from "./components/InteractiveMap.vue";
 import PostDetail from "./components/PostDetail.vue";
@@ -108,6 +108,12 @@ const loadPosts = async () => {
 
 onMounted(() => {
   void loadPosts();
+});
+
+watch(activeTab, (newTab) => {
+  if (['explore', 'matches', 'chat'].includes(newTab)) {
+    void loadPosts();
+  }
 });
 
 // Add Comment
