@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref, watch, nextTick, onMounted } from "vue";
+import { ref, watch, nextTick, onMounted, onUnmounted } from "vue";
 import { ArrowLeft, Send, Users, Shield, Plus, Image, LogOut } from "lucide-vue-next";
 import type { ChatConversation } from "../types";
+import { getOrCreateProfile } from "../userProfile";
 
 const props = defineProps<{
   chat: ChatConversation;
@@ -9,12 +10,14 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: "back"): void;
-  (e: "sendMessage", chatId: string, text: string): void;
   (e: "requestLeave", chatId: string): void;
 }>();
 
+const profile = ref(getOrCreateProfile());
 const inputText = ref("");
 const messagesEndRef = ref<HTMLDivElement | null>(null);
+const localMessages = ref<any[]>([]);
+let ws: WebSocket | null = null;
 
 const scrollToBottom = () => {
   nextTick(() => {
@@ -22,19 +25,39 @@ const scrollToBottom = () => {
   });
 };
 
-// Auto-scroll to bottom of conversation
-watch(() => props.chat.messages, () => {
+watch(localMessages, () => {
   scrollToBottom();
 }, { deep: true });
 
 onMounted(() => {
+  const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+  const wsUrl = `${protocol}//${window.location.host}/api/ws/chat/${props.chat.id}?userId=${profile.value.userId}&nickname=${encodeURIComponent(profile.value.nickname)}`;
+  
+  ws = new WebSocket(wsUrl);
+
+  ws.onmessage = (event) => {
+    const data = JSON.parse(event.data);
+    if (data.type === 'history') {
+      localMessages.value = data.messages;
+    } else {
+      localMessages.value.push(data);
+    }
+  };
+
   scrollToBottom();
+});
+
+onUnmounted(() => {
+  if (ws) {
+    ws.close();
+  }
 });
 
 const handleSend = (e: Event) => {
   e.preventDefault();
-  if (!inputText.value.trim()) return;
-  emit("sendMessage", props.chat.id, inputText.value.trim());
+  if (!inputText.value.trim() || !ws) return;
+  
+  ws.send(JSON.stringify({ content: inputText.value.trim() }));
   inputText.value = "";
 };
 
@@ -44,6 +67,12 @@ const getInitial = (sender: string) => {
 
 const isHostSender = (sender: string) => {
   return sender.includes("Author") || sender.includes("작성자");
+};
+
+const formatTime = (isoString: string) => {
+  if (!isoString) return "";
+  const date = new Date(isoString);
+  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 };
 </script>
 
@@ -68,7 +97,7 @@ const isHostSender = (sender: string) => {
           <div className="flex items-center gap-1.5 mt-0.5">
             <span className="inline-block w-2 h-2 bg-[#10b981] rounded-full animate-pulse"></span>
             <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider flex items-center gap-0.5">
-              <Users :size="11" className="inline" /> 익명 단톡방 ({{ chat.joinedCount }}명 참여중)
+              <Users :size="11" className="inline" /> 익명 단톡방 ({{ profile.nickname }} 접속 중)
             </span>
           </div>
         </div>
@@ -101,33 +130,41 @@ const isHostSender = (sender: string) => {
       </div>
 
       <!-- Message bubble stream -->
-      <template v-for="msg in chat.messages" :key="msg.id">
+      <template v-for="(msg, idx) in localMessages" :key="idx">
+        
+        <!-- System Message -->
+        <div v-if="msg.type === 'system'" className="flex justify-center my-2">
+          <div className="bg-gray-200 text-gray-600 text-[11px] px-3 py-1 rounded-full">
+            {{ msg.content }}
+          </div>
+        </div>
+
         <!-- Message sent by me -->
-        <div v-if="msg.isMe" className="flex justify-end items-end gap-1.5">
-          <span className="text-[9px] text-gray-400 font-medium mb-1 shrink-0">{{ msg.time }}</span>
+        <div v-else-if="msg.userId === profile.userId" className="flex justify-end items-end gap-1.5">
+          <span className="text-[9px] text-gray-400 font-medium mb-1 shrink-0">{{ formatTime(msg.createdAt) }}</span>
           <div className="bg-[#006c49] text-white text-[13px] leading-relaxed px-3.5 py-2.5 rounded-2xl rounded-tr-xs max-w-[70%] shadow-xs break-words">
-            {{ msg.text }}
+            {{ msg.content }}
           </div>
         </div>
 
         <!-- Message sent by others -->
         <div v-else className="flex gap-2.5 items-start">
           <div :className="`w-8 h-8 rounded-full border flex items-center justify-center text-[10px] font-bold shrink-0 shadow-2xs mt-1 ${
-            isHostSender(msg.sender) ? 'bg-amber-100 text-amber-700 border-amber-200' : 'bg-emerald-50 text-[#006c49]'
+            isHostSender(msg.nickname || '') ? 'bg-amber-100 text-amber-700 border-amber-200' : 'bg-emerald-50 text-[#006c49]'
           }`">
-            {{ getInitial(msg.sender) }}
+            {{ getInitial(msg.nickname || '익명') }}
           </div>
           <div className="flex flex-col gap-1 max-w-[70%]">
             <span className="text-[11px] font-bold text-gray-500 px-0.5 flex items-center gap-1">
-              {{ msg.sender }}
-              <span v-if="isHostSender(msg.sender)" className="text-[8px] bg-amber-500 text-white font-extrabold px-1 py-0.2 rounded-sm uppercase scale-90">Host</span>
+              {{ msg.nickname || '익명' }}
+              <span v-if="isHostSender(msg.nickname || '')" className="text-[8px] bg-amber-500 text-white font-extrabold px-1 py-0.2 rounded-sm uppercase scale-90">Host</span>
             </span>
             
             <div className="flex items-end gap-1.5">
               <div className="bg-white border border-gray-100 text-gray-800 text-[13px] leading-relaxed px-3.5 py-2.5 rounded-2xl rounded-tl-xs shadow-3xs break-words">
-                {{ msg.text }}
+                {{ msg.content }}
               </div>
-              <span className="text-[9px] text-gray-400 font-medium mb-1 shrink-0">{{ msg.time }}</span>
+              <span className="text-[9px] text-gray-400 font-medium mb-1 shrink-0">{{ formatTime(msg.createdAt) }}</span>
             </div>
           </div>
         </div>
