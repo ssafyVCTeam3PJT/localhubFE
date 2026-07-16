@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, watch, nextTick, onMounted } from "vue";
-import { ArrowLeft, Send, Users, Shield, Plus, Image } from "lucide-vue-next";
+import { ArrowLeft, Send, Users, Shield, Plus, Image, LogOut } from "lucide-vue-next";
 import type { ChatConversation } from "../types";
 
 const props = defineProps<{
@@ -10,6 +10,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: "back"): void;
   (e: "sendMessage", chatId: string, text: string): void;
+  (e: "requestLeave", chatId: string): void;
 }>();
 
 const inputText = ref("");
@@ -73,9 +74,18 @@ const isHostSender = (sender: string) => {
         </div>
       </div>
 
-      <!-- Info button -->
-      <div className="bg-emerald-50 text-[#006c49] text-[10px] font-extrabold px-2 py-1 rounded-md border border-emerald-100 uppercase tracking-widest hidden sm:inline-block">
-        Active Room
+      <div className="flex items-center gap-2">
+        <div className="bg-emerald-50 text-[#006c49] text-[10px] font-extrabold px-2 py-1 rounded-md border border-emerald-100 uppercase tracking-widest hidden sm:inline-block">
+          Active Room
+        </div>
+        <button
+          @click="emit('requestLeave', chat.id)"
+          className="inline-flex items-center gap-1 rounded-md px-2 py-1.5 text-[11px] font-bold text-gray-500 hover:bg-pink-50 hover:text-[#be185d] transition-colors cursor-pointer"
+          aria-label="Leave chat room"
+        >
+          <LogOut :size="14" />
+          나가기
+        </button>
       </div>
     </div>
 

@@ -51,6 +51,14 @@ const joinedPostIds = ref<string[]>(getJoinedPosts());
 // Selection states
 const selectedPost = ref<Post | null>(null);
 const activeChatId = ref<string | null>(null);
+const pendingChatLeave = ref<{ postId: string; title: string } | null>(null);
+
+const removeChat = (chatId: string) => {
+  chats.value = chats.value.filter((chat) => chat.id !== chatId);
+  if (activeChatId.value === chatId) {
+    activeChatId.value = null;
+  }
+};
 
 // Open states
 const isCreateModalOpen = ref(false);
@@ -186,8 +194,8 @@ const handleJoinPost = async (post: Post) => {
 };
 
 // Leave Match
-const handleLeavePost = async (post: Post) => {
-  if (!joinedPostIds.value.includes(post.id)) return;
+const handleLeavePost = async (post: Post, forceLeave = false) => {
+  if (!forceLeave && !joinedPostIds.value.includes(post.id)) return;
 
   try {
     const result = await leavePost(post.id);
@@ -196,10 +204,7 @@ const handleLeavePost = async (post: Post) => {
     joinedPostIds.value = joinedPostIds.value.filter(id => id !== post.id);
     removeJoinedPost(post.id);
 
-    chats.value = chats.value.map((c) => {
-      if (c.id === post.id) return { ...c, joinedCount: nextJoinedCount };
-      return c;
-    });
+    removeChat(post.id);
 
     posts.value = posts.value.map((p) => {
       if (p.id === post.id) return { ...p, joinedCount: nextJoinedCount };
@@ -213,7 +218,7 @@ const handleLeavePost = async (post: Post) => {
       };
     }
 
-    triggerToast(`"${post.title}" 참가 취소 완료`);
+    triggerToast(`"${post.title}" 참가와 채팅방 나가기가 완료되었습니다.`);
   } catch (error) {
     triggerToast(error instanceof Error ? error.message : "취소 처리에 실패했습니다.");
   }
@@ -267,6 +272,31 @@ const handleSendMessage = (chatId: string, text: string) => {
     }
     return c;
   });
+};
+
+const handleRequestLeaveChat = (chatId: string) => {
+  const chat = chats.value.find((item) => item.id === chatId);
+  if (!chat) return;
+  pendingChatLeave.value = { postId: chat.id, title: chat.title };
+};
+
+const handleConfirmLeaveChat = async () => {
+  const pending = pendingChatLeave.value;
+  if (!pending) return;
+
+  pendingChatLeave.value = null;
+  const post = posts.value.find((item) => item.id === pending.postId);
+
+  if (post) {
+    await handleLeavePost(post, true);
+    return;
+  }
+
+  // Demo-only conversations can exist before the post list has loaded.
+  removeChat(pending.postId);
+  removeJoinedPost(pending.postId);
+  joinedPostIds.value = joinedPostIds.value.filter((id) => id !== pending.postId);
+  triggerToast(`"${pending.title}" 모임과 채팅방에서 나갔습니다.`);
 };
 
 // Create New Post
@@ -407,6 +437,8 @@ const handleRequestDelete = async (postId: string, password: string) => {
     await deletePost(postId, password);
     posts.value = posts.value.filter((post) => post.id !== postId);
     joinedPostIds.value = joinedPostIds.value.filter((id) => id !== postId);
+    removeJoinedPost(postId);
+    removeChat(postId);
     if (selectedPost.value?.id === postId) {
       selectedPost.value = null;
     }
@@ -526,6 +558,7 @@ const handleTabChange = (tab: "explore" | "matches" | "chat") => {
               :chat="chats.find(c => c.id === activeChatId)!"
               @back="activeChatId = null"
               @sendMessage="handleSendMessage"
+              @requestLeave="handleRequestLeaveChat"
             />
           </template>
           <div v-else className="text-center">
@@ -644,6 +677,20 @@ const handleTabChange = (tab: "explore" | "matches" | "chat") => {
       @close="isAIDrawerOpen = false"
       :postsContext="posts"
     />
+
+    <!-- Confirm that leaving a chat also cancels participation in its match -->
+    <div v-if="pendingChatLeave" className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4" role="dialog" aria-modal="true" aria-labelledby="leave-chat-title">
+      <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl">
+        <h3 id="leave-chat-title" className="text-base font-bold text-gray-900">모임을 나가시겠습니까?</h3>
+        <p className="mt-2 text-sm leading-relaxed text-gray-600">
+          채팅방을 나가면 “{{ pendingChatLeave.title }}” 모임 참가도 함께 취소됩니다.
+        </p>
+        <div className="mt-6 flex justify-end gap-2">
+          <button @click="pendingChatLeave = null" className="rounded-xl bg-gray-100 px-4 py-2.5 text-sm font-bold text-gray-600 hover:bg-gray-200 transition-colors">아니요</button>
+          <button @click="handleConfirmLeaveChat" className="rounded-xl bg-[#be185d] px-4 py-2.5 text-sm font-bold text-white hover:bg-[#9d174d] transition-colors">예, 모임 나가기</button>
+        </div>
+      </div>
+    </div>
 
   </div>
 </template>
